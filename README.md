@@ -1,0 +1,29 @@
+## go-migrations
+
+Building a database migration package with Go
+
+### Usage
+```clone the repo
+git clone https://github.com/Milkado/go-migrations.git
+cd go-migrations
+```
+
+```build the binary
+go build -o go-migrations
+```
+
+```run the binary
+./go-migrations --c migration:create --name create-users-table
+```
+
+### Features
+- Create new migration files
+- Monitor connection pool
+- Health checks
+- Name validation to ensure pattern is followed
+
+### TODO
+- Add migration logic with type safety
+- Add migrate command
+- Add alter migration
+- Add rollback migration
