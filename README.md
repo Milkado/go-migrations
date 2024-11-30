@@ -33,5 +33,5 @@ go build -o go-migrations
 
 
 ### Final
-- Make a standalone package for go modules
+- Make a full blown db standalone package for go modules
 - Use in ```"go-api-blueprint/boilerplate"``` future project
