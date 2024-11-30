@@ -28,3 +28,10 @@ go build -o go-migrations
 - Add migrate command
 - Add alter migration
 - Add rollback migration
+- Add seeding with type safety
+- Add tests
+
+
+### Final
+- Make a standalone package for go modules
+- Use in ```"go-api-blueprint/boilerplate"``` future project
