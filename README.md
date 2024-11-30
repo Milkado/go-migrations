@@ -1,6 +1,7 @@
 ## go-migrations
 
-Building a database migration package with Go
+Building a database migration package with Go.
+
 Initial fase of the project, little to none implemented
 
 ### Usage
