@@ -19,18 +19,19 @@ go build -o go-migrations
 ```
 
 ### Features
-- Create new migration files
+- Migration files as you like
 - Monitor connection pool
 - Health checks
 - Name validation to ensure pattern is followed
 
 ### TODO
-- Add migration logic with type safety
-- Add migrate command
-- Add alter migration
-- Add rollback migration
-- Add seeding with type safety
-- Add tests
+- [ ] Environment variables support
+- [ ] Migration option using query builder
+- [X] Migrate command
+- [ ] Alter migration
+- [ ] Rollback migration (just need testing)
+- [ ] Seeding with type safety
+- [ ] Add tests
 
 
 ### Final

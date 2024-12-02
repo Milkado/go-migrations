@@ -13,6 +13,7 @@ import (
 type templateData struct {
 	Timestamp string
 	Name      string
+	ParsedName string
 }
 
 func validateMigrationName(name string) error {
@@ -42,7 +43,8 @@ func GenerateMigrationFile(name string, tmplfile string) {
 	parsedname := strings.ReplaceAll(name, "-", "")
 	data := templateData{
 		Timestamp: timestamp,
-		Name:      parsedname,
+		Name:      name,
+		ParsedName: parsedname,
 	}
 
 	//create template
@@ -67,7 +69,7 @@ func GenerateMigrationFile(name string, tmplfile string) {
 		return
 	}
 
-	filename := "database/migrations/" + timestamp + "_" + parsedname + ".go"
+	filename := "database/migrations/" + timestamp + "-" + name + ".go"
 
 	//write file from buffer
 	err = os.WriteFile(filename, bytes.Bytes(), 0644)

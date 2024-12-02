@@ -104,9 +104,14 @@ func NewConnectionWithMonitoring(config *config.DBConfig) (*sql.DB, error) {
 		return nil, fmt.Errorf("health check failed, error: %v", err)
 	}
 
+	//Create migrations table
+	if err := CreateMigrationsTable(db, config.Driver); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("error creating migrations table, error: %v", err)
+	}
+
 	//Start periodic health checks
 	StartHealthChecks(db, time.Minute)
 
 	return db, nil
 }
-

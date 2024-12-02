@@ -1,11 +1,16 @@
 package main
 
 import (
+	"database/sql"
 	"flag"
 	"fmt"
 
 	"github.com/Milkado/go-migrations/cmd"
+	"github.com/Milkado/go-migrations/config"
+	"github.com/Milkado/go-migrations/database"
+	_ "github.com/Milkado/go-migrations/database/migrations"
 )
+
 func main() {
 	var command string
 	var name string
@@ -22,15 +27,51 @@ func main() {
 	switch command {
 	case "migration:create":
 		cmd.NewMigration(name)
+	case "migrate":
+		db := dbConnect()
+		defer db.Close()
+		executor := database.NewExecutor(db)
+		if err := executor.Migrate(); err != nil {
+			fmt.Println(cmd.Red, err.Error())
+			return
+		}
+	case "migrate:rollback":
+		db := dbConnect()
+		defer db.Close()
+		executor := database.NewExecutor(db)
+		if err := executor.Rollback(); err != nil {
+			fmt.Println(cmd.Red, err.Error())
+			return
+		}
 	default:
 		errorC()
 	}
 }
 
 func errorC() {
-	fmt.Println(cmd.Red, "Command not available or not specified" + cmd.Reset)
+	fmt.Println(cmd.Red, "Command not available or not specified"+cmd.Reset)
 	fmt.Println(cmd.Yellow + "Usage: go-migrations --c <command>")
 	fmt.Println("Available commands:")
 	fmt.Println("migration:create --name <name>")
+	fmt.Println("migrate")
+	fmt.Println("migrate:rollback")
 	fmt.Println(cmd.Reset)
+}
+
+func dbConnect() *sql.DB {
+	config := config.DBConfig{
+		Driver:   "mysql",
+		Host:     "localhost",
+		Port:     "3306",
+		User:     "root",
+		Password: "pass",
+		DBName:   "go_migrations",
+	}
+
+	db, err := database.NewConnectionWithMonitoring(&config)
+	if err != nil {
+		fmt.Println(cmd.Red, err.Error())
+		return nil
+	}
+	return db
 }
