@@ -1,0 +1,19 @@
+name: CI
+on:
+  pull_request:
+    branches: [ ci ]
+
+jobs:
+  continuous-integration:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Setup Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.23.1
+      - name: Get dependencies
+        run: go mod tidy
+      - name: Run tests
+        run: go test -v ./builder/schema/sqlgen_test.go
