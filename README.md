@@ -26,14 +26,19 @@ go build -o go-migrations
 
 ### TODO
 - [ ] Environment variables support
-- [ ] Migration option using query builder
+- [X] Migration option using query builder
 - [X] Migrate command
 - [ ] Alter migration
 - [ ] Rollback migration (just need testing)
 - [ ] Seeding with type safety
 - [ ] Add tests
+    - [X] Add tests for SQL generation
+    - [ ] Add tests for generating files
+    - [ ] Add tests for scanning files
+    - [ ] Add tests for getting pending migrations
+    - [ ] Add tests for migrate and rollback
+
 
 
 ### Final
-- Make a full blown db standalone package for go modules
-- Use in ```"go-api-blueprint/boilerplate"``` future project
+- Make a full blown db standalone package for go modules or change into ```"go-api-blueprint/boilerplate"``` future project
