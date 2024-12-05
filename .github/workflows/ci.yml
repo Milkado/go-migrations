@@ -16,4 +16,7 @@ jobs:
       - name: Get dependencies
         run: go mod tidy
       - name: Run tests
-        run: go test -v ./builder/schema/sqlgen_test.go
+        run: |
+          go test -v ./tests/schema/sqlgen_test.go
+          go test -v ./tests/cmd/create-migration_test.go
+
