@@ -1,28 +1,26 @@
-package schema_test
+package builder_test
 
 import (
-	"log"
 	"strings"
 	"testing"
 
-	"github.com/Milkado/go-migrations/cmd"
 	"github.com/Milkado/go-migrations/builder/schema"
+	"github.com/Milkado/go-migrations/cmd"
 )
-func init() {
-    log.Printf("Schema package: %T", schema.NewSchema())
-}
-func TestSQLGeneration (t *testing.T) {
+
+func TestSQLGeneration(t *testing.T) {
+	//Expected queries with line breaks to make it easier to read
 	tests := []struct {
-		name string
-		builder func() string
+		name     string
+		builder  func() string
 		expected string
 	}{
 		{
-		name: "Simple table with ID",
-		builder: func() string {
-			return schema.NewSchema().Create("users").Id().Build()
-		},
-		expected: `CREATE TABLE IF NOT EXISTS users (
+			name: "Simple table with ID",
+			builder: func() string {
+				return schema.NewSchema().Create("users").Id().Build()
+			},
+			expected: `CREATE TABLE IF NOT EXISTS users (
 			id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY)`,
 		},
 		{
@@ -70,11 +68,9 @@ func TestSQLGeneration (t *testing.T) {
 			expected := normalizeSpaces(tt.expected)
 
 			if got != expected {
-				t.Errorf(cmd.Red + "\nwant: %s\ngot: %s\n" + cmd.Reset, expected, got)
+				t.Errorf(cmd.Red+"\nwant: %s\ngot: %s\n"+cmd.Reset, expected, got)
 				return
 			}
-
-			log.Printf(cmd.Green + "Test passed: %s\n" + cmd.Reset, tt.name)
 		})
 	}
 }
