@@ -19,10 +19,16 @@ go build -o go-migrations
 ```
 
 ### Features
-- Migration files as you like
+- Migration files as you like (raw sql or builder)
 - Monitor connection pool
 - Health checks
 - Name validation to ensure pattern is followed
+- Full fledged sql builder (to add more database support)
+
+
+### Drawbacks
+- Every new migration created needs a new build (from using go files)
+    - Future mitigation: use a separate build to generate migration files
 
 ### TODO
 - [ ] Environment variables support
@@ -34,6 +40,8 @@ go build -o go-migrations
 - [ ] Rollback migration (just need testing)
 - [ ] Seeding with type safety
 - [X] Refactor alterations to fucntion like references
+- [ ] Separate migrate command to a standalone build
+- [ ] Add option to use SQL files
 - [ ] Add tests
     - [X] Add tests for SQL generation
     - [X] Add tests for generating files
