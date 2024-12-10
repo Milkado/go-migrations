@@ -6,11 +6,16 @@ import (
 )
 
 type (
+	SQLType    string
 	SQLBuilder struct {
-		table      string
-		columns    []Column
-		indexes    []Index
-		references []References
+		sqlType       SQLType
+		table         string
+		columns       []Column
+		dropColumns   []string
+		modifyColumns []Column
+		renameColumns []RenameColumn
+		indexes       []Index
+		references    []References
 	}
 
 	Column struct {
@@ -21,6 +26,11 @@ type (
 		Default    *string
 		PrimaryKey bool
 		AutoInc    bool
+	}
+
+	RenameColumn struct {
+		OldName string
+		NewName string
 	}
 
 	Index struct {
@@ -38,7 +48,27 @@ type (
 	}
 )
 
+const (
+	CreateTable = "CREATE TABLE"
+	DropTable   = "DROP TABLE"
+	AlterTable  = "ALTER TABLE"
+)
+
 func (b *SQLBuilder) Build() string {
+	var sql strings.Builder
+	switch b.sqlType {
+	case CreateTable:
+		return b.buildCreateTable()
+	case DropTable:
+		return b.buildDropTable()
+	case AlterTable:
+		return b.buildAlterTable()
+	}
+
+	return sql.String()
+}
+
+func (b *SQLBuilder) buildCreateTable() string {
 	var sql strings.Builder
 
 	sql.WriteString(fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (", b.table))
@@ -108,6 +138,98 @@ func (b *SQLBuilder) Build() string {
 
 	sql.WriteString(strings.Join(definitions, ",\n"))
 	sql.WriteString("\n)")
+
+	return sql.String()
+}
+
+func (b *SQLBuilder) buildDropTable() string {
+	return fmt.Sprintf("DROP TABLE IF EXISTS %s", b.table)
+}
+
+func (b *SQLBuilder) buildAlterTable() string {
+	//TODO: create builder for alterations
+
+	var sql strings.Builder
+	sql.WriteString(fmt.Sprintf("ALTER TABLE %s\n", b.table))
+
+	//Build definitions to add columns/constraints/drops/renames
+	var definitions []string
+	//Add columns
+	for _, col := range b.columns {
+		def := fmt.Sprintf("ADD COLUMN %s %s", col.Name, col.Type)
+
+		if col.Length > 0 {
+			def += fmt.Sprintf("(%d)", col.Length)
+		}
+
+		if !col.Nullable {
+			def += " NOT NULL"
+		}
+
+		if col.Default != nil {
+			def += fmt.Sprintf(" DEFAULT %s", *col.Default)
+		}
+
+		definitions = append(definitions, def)
+	}
+
+	// Add fk constraints
+	for _, ref := range b.references {
+		definitions = append(definitions,
+			fmt.Sprintf("ADD CONSTRAINT FOREIGN KEY (%s) REFERENCES %s (%s)",
+				ref.Column, ref.RefTable, ref.RefColumn),
+		)
+	}
+
+	//Add renames
+	for _, col := range b.renameColumns {
+		definitions = append(definitions,
+			fmt.Sprintf("RENAME COLUMN %s TO %s", col.OldName, col.NewName),
+		)
+	}
+
+	//Add modifications
+	for _, col := range b.modifyColumns {
+		definitions = append(definitions,
+			fmt.Sprintf("MODIFY COLUMN %s %s", col.Name, col.Type),
+		)
+
+		if col.Length > 0 {
+			definitions = append(definitions,
+				fmt.Sprintf("(%d)", col.Length),
+			)
+		}
+
+		if !col.Nullable {
+			definitions = append(definitions,
+				" NOT NULL",
+			)
+		}
+	}
+
+	//Add uniques and indexes
+	for _, idx := range b.indexes {
+		cols := strings.Join(idx.Columns, ", ")
+
+		if idx.Type == "unique" {
+			definitions = append(definitions,
+				fmt.Sprintf("ADD CONSTRAINT %s UNIQUE (%s)", idx.Name, cols),
+			)
+		} else {
+			definitions = append(definitions,
+				fmt.Sprintf("ADD INDEX %s (%s)", idx.Name, cols),
+			)
+		}
+	}
+
+	//Add drops
+	for _, col := range b.dropColumns {
+		definitions = append(definitions,
+			fmt.Sprintf("DROP COLUMN %s", col),
+		)
+	}
+
+	sql.WriteString(strings.Join(definitions, "\n"))
 
 	return sql.String()
 }
