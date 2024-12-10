@@ -33,6 +33,7 @@ go build -o go-migrations
 - [ ] Alter migration
 - [ ] Rollback migration (just need testing)
 - [ ] Seeding with type safety
+- [ ] Refactor alterations to fucntion like references
 - [ ] Add tests
     - [X] Add tests for SQL generation
     - [X] Add tests for generating files

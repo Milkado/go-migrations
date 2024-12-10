@@ -5,8 +5,8 @@ import "fmt"
 type (
 	Schema interface {
 		Create(table string) Table
-		Drop(table string) Schema
-		Alter(table string) Schema
+		Drop(table string) Table
+		Alter(table string) Alteration
 	}
 
 	Table interface {
@@ -32,6 +32,23 @@ type (
 		Build() string
 	}
 
+	Alteration interface {
+		String(name string, nullable bool, length ...int) Alteration
+		Text(name string, nullable bool) Alteration
+		Integer(name string, nullable bool) Alteration
+		BigInteger(name string, nullable bool) Alteration
+		Float(name string, nullable bool, precision ...int) Alteration
+		Timestamps() Alteration
+		SoftDeletes() Alteration
+		Unique(columns ...string) Alteration
+		Index(columns ...string) Alteration
+		ForeignId(column string, table string, nullable bool) Reference
+		DropColumn(column ...string) Alteration
+		ModifyColumn(column string, columnType string, nullable bool) Alteration
+		RenameColumn(column string, newName string) Alteration
+		Build() string
+	}
+
 	SchemaBuilder struct {
 		sqlBuilder *SQLBuilder
 	}
@@ -45,27 +62,34 @@ type (
 		column string
 		table string
 	}
+
+ 	AlterationBuilder struct {
+		sqlBuilder *SQLBuilder
+	}
 )
 
-func NewSchema() *SchemaBuilder {
+func Query() *SchemaBuilder {
 	return &SchemaBuilder{
 		sqlBuilder: &SQLBuilder{},
 	}
 }
 
 func (s *SchemaBuilder) Create(tableName string) Table {
+    s.sqlBuilder.sqlType = CreateTable
 	s.sqlBuilder.table = tableName
 	return &TableBuilder{sqlBuilder: s.sqlBuilder}
 }
 
-func (s *SchemaBuilder) Drop(tableName string) Schema {
+func (s *SchemaBuilder) Drop(tableName string) Table {
+    s.sqlBuilder.sqlType = DropTable
 	s.sqlBuilder.table = tableName
-	return s
+	return &TableBuilder{sqlBuilder: s.sqlBuilder}
 }
 
-func (s *SchemaBuilder) Alter(tableName string) Schema {
+func (s *SchemaBuilder) Alter(tableName string) Alteration {
+    s.sqlBuilder.sqlType = AlterTable
 	s.sqlBuilder.table = tableName
-	return s
+	return &AlterationBuilder{sqlBuilder: s.sqlBuilder}
 }
 
 func (t *TableBuilder) Id() Table {
@@ -244,10 +268,169 @@ func (r *ReferenceBuilder) OnUpdate(action string) Reference {
 	return r
 }
 
+func (a *AlterationBuilder) String(name string, nullable bool, length ...int) Alteration {
+	l := 255
+	if len(length) > 0 {
+		l = length[0]
+	}
+
+	a.sqlBuilder.columns = append(a.sqlBuilder.columns, Column{
+		Name:     name,
+		Type:     "VARCHAR",
+		Length:   l,
+		Nullable: nullable,
+	})
+
+	return a
+}
+
+func (a *AlterationBuilder) Text(name string, nullable bool) Alteration {
+	a.sqlBuilder.columns = append(a.sqlBuilder.columns, Column{
+		Name:     name,
+		Type:     "TEXT",
+		Nullable: nullable,
+	})
+
+	return a
+}
+
+func (a *AlterationBuilder) Integer(name string, nullable bool) Alteration {
+	a.sqlBuilder.columns = append(a.sqlBuilder.columns, Column{
+		Name:     name,
+		Type:     "INT",
+		Nullable: nullable,
+	})
+
+	return a
+}
+
+func (a *AlterationBuilder) BigInteger(name string, nullable bool) Alteration {
+	a.sqlBuilder.columns = append(a.sqlBuilder.columns, Column{
+		Name:     name,
+		Type:     "BIGINT",
+		Nullable: nullable,
+	})
+
+	return a
+}
+
+func (a *AlterationBuilder) Float(name string, nullable bool, precision ...int) Alteration {
+	p := 8
+	if len(precision) > 0 {
+		p = precision[0]
+	}
+
+	a.sqlBuilder.columns = append(a.sqlBuilder.columns, Column{
+		Name:     name,
+		Type:     fmt.Sprintf("FLOAT(%d)", p),
+		Nullable: nullable,
+	})
+
+	return a
+}
+
+func (a *AlterationBuilder) Timestamps() Alteration {
+	defaultTimestamp := "CURRENT_TIMESTAMP"
+	a.sqlBuilder.columns = append(a.sqlBuilder.columns, Column{
+		Name:     "created_at",
+		Type:     "TIMESTAMP",
+		Default: &defaultTimestamp,
+		Nullable: false,
+	})
+
+	a.sqlBuilder.columns = append(a.sqlBuilder.columns, Column{
+		Name:     "updated_at",
+		Type:     "TIMESTAMP",
+		Default: &defaultTimestamp,
+		Nullable: false,
+	})
+
+	return a
+}
+
+func (a *AlterationBuilder) SoftDeletes() Alteration {
+	a.sqlBuilder.columns = append(a.sqlBuilder.columns, Column{
+		Name:     "deleted_at",
+		Type:     "TIMESTAMP",
+		Nullable: true,
+	})
+
+	return a
+}
+
+func (a *AlterationBuilder) Unique(columns ...string) Alteration {
+	for _, col := range columns {
+		name := col + "_unique"
+		a.sqlBuilder.indexes = append(a.sqlBuilder.indexes, Index{
+			Name:    name,
+			Columns: []string{col},
+			Type:    "unique",
+		})
+	}
+
+	return a
+}
+
+func (a *AlterationBuilder) Index(columns ...string) Alteration {
+	for _, col := range columns {
+		name := col + "_index"
+		a.sqlBuilder.indexes = append(a.sqlBuilder.indexes, Index{
+			Name:    name,
+			Columns: []string{col},
+			Type:    "index",
+		})
+	}
+
+	return a
+}
+
+func (a *AlterationBuilder) ForeignId(column string, table string, nullable bool) Reference {
+	a.sqlBuilder.columns = append(a.sqlBuilder.columns, Column{
+		Name:       column,
+		Type: "BIGINT",
+		Nullable:   nullable,
+	})
+
+	return &ReferenceBuilder {
+		sqlBuilder: a.sqlBuilder,
+		column: column,
+		table: table,
+	}
+}
+
+func (a *AlterationBuilder) DropColumn(columns ...string) Alteration {
+	a.sqlBuilder.dropColumns = append(a.sqlBuilder.dropColumns, columns...)
+
+	return a
+}
+
+func (a *AlterationBuilder) ModifyColumn(column string, columnType string, nullable bool) Alteration {
+	a.sqlBuilder.modifyColumns = append(a.sqlBuilder.modifyColumns, Column{
+		Name: column,
+		Type: columnType,
+		Nullable: nullable,
+	})
+
+	return a
+}
+
+func (a *AlterationBuilder) RenameColumn(column string, newName string) Alteration {
+	a.sqlBuilder.renameColumns = append(a.sqlBuilder.renameColumns, RenameColumn{
+		OldName: column,
+		NewName: newName,
+	})
+
+	return a
+}
+
 func (r *ReferenceBuilder) Build() string {
 	return r.sqlBuilder.Build()
 }
 
 func (t *TableBuilder) Build() string {
 	return t.sqlBuilder.Build()
+}
+
+func (a *AlterationBuilder) Build() string {
+	return a.sqlBuilder.Build()
 }

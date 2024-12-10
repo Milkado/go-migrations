@@ -18,7 +18,7 @@ func TestSQLGeneration(t *testing.T) {
 		{
 			name: "Simple table with ID",
 			builder: func() string {
-				return schema.NewSchema().Create("users").Id().Build()
+				return schema.Query().Create("users").Id().Build()
 			},
 			expected: `CREATE TABLE IF NOT EXISTS users (
 			id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY)`,
@@ -26,7 +26,7 @@ func TestSQLGeneration(t *testing.T) {
 		{
 			name: "Table with multiple columns",
 			builder: func() string {
-				return schema.NewSchema().Create("users").
+				return schema.Query().Create("users").
 					Id().
 					String("name", false).
 					Integer("age", false).
@@ -43,7 +43,7 @@ func TestSQLGeneration(t *testing.T) {
 		{
 			name: "Table with foreign key",
 			builder: func() string {
-				return schema.NewSchema().
+				return schema.Query().
 					Create("posts").
 					Id().
 					String("title", false).
@@ -57,6 +57,37 @@ func TestSQLGeneration(t *testing.T) {
 				title VARCHAR(255) NOT NULL,
 				user_id BIGINT NOT NULL,
 				FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE)`,
+		},
+		{
+			name: "Alter table add constraint",
+			builder: func() string {
+				return schema.Query().
+					Alter("posts").
+					Unique("title").
+					Build()
+			},
+			expected: `ALTER TABLE posts ADD CONSTRAINT title_unique UNIQUE (title)`,
+		},
+		{
+			name: "Drop table",
+			builder: func() string {
+				return schema.Query().Drop("users").Build()
+			},
+			expected: `DROP TABLE IF EXISTS users`,
+		},
+		{
+			name: "Alter table rename column",
+			builder: func () string {
+				return schema.Query().Alter("users").RenameColumn("name", "first_name").Build()
+			},
+			expected: `ALTER TABLE users RENAME COLUMN name TO first_name`,
+		},
+		{
+			name: "Alter table modify column",
+			builder: func () string {
+				return schema.Query().Alter("users").ModifyColumn("active", "BOOLEAN", false).Build()
+			},
+			expected: `ALTER TABLE users MODIFY COLUMN active BOOLEAN NOT NULL`,
 		},
 	}
 
