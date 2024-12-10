@@ -28,12 +28,12 @@ go build -o go-migrations
 - [ ] Environment variables support
 - [X] Migration option using query builder
 - [ ] Change sqlgen to support multiple databases
-- [ ] Add Drop and Alter sqlgen
+- [X] Add Drop and Alter sqlgen
 - [X] Migrate command
 - [ ] Alter migration
 - [ ] Rollback migration (just need testing)
 - [ ] Seeding with type safety
-- [ ] Refactor alterations to fucntion like references
+- [X] Refactor alterations to fucntion like references
 - [ ] Add tests
     - [X] Add tests for SQL generation
     - [X] Add tests for generating files
