@@ -1,6 +1,10 @@
 package schema
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/Milkado/go-migrations/config"
+)
 
 type (
 	Schema interface {
@@ -20,16 +24,15 @@ type (
 		SoftDeletes() Table
 		Unique(columns ...string) Table
 		Index(columns ...string) Table
-		ForeignId(column string, table string, nullable bool) Reference
+		ForeignId(column string, nullable bool) Reference
 		Build() string
 	}
 
 	Reference interface {
 		Refenreces(column string) Reference
-		On(table string) Reference
 		OnDelete(action string) Reference
 		OnUpdate(action string) Reference
-		Build() string
+		On(table string) Table
 	}
 
 	Alteration interface {
@@ -42,7 +45,7 @@ type (
 		SoftDeletes() Alteration
 		Unique(columns ...string) Alteration
 		Index(columns ...string) Alteration
-		ForeignId(column string, table string, nullable bool) Reference
+		ForeignId(column string, nullable bool) Reference
 		DropColumn(column ...string) Alteration
 		ModifyColumn(column string, columnType string, nullable bool) Alteration
 		RenameColumn(column string, newName string) Alteration
@@ -59,43 +62,55 @@ type (
 
 	ReferenceBuilder struct {
 		sqlBuilder *SQLBuilder
-		column string
-		table string
+		column     string
 	}
 
- 	AlterationBuilder struct {
+	AlterationBuilder struct {
 		sqlBuilder *SQLBuilder
 	}
 )
 
 func Query() *SchemaBuilder {
+	//TODO: Add env to load dialect dinamically
 	return &SchemaBuilder{
-		sqlBuilder: &SQLBuilder{},
+		sqlBuilder: &SQLBuilder{
+			dialect: Dialect(config.Env("DB_DRIVER")),
+		},
 	}
 }
 
 func (s *SchemaBuilder) Create(tableName string) Table {
-    s.sqlBuilder.sqlType = CreateTable
+	s.sqlBuilder.sqlType = CreateTable
 	s.sqlBuilder.table = tableName
 	return &TableBuilder{sqlBuilder: s.sqlBuilder}
 }
 
 func (s *SchemaBuilder) Drop(tableName string) Table {
-    s.sqlBuilder.sqlType = DropTable
+	s.sqlBuilder.sqlType = DropTable
 	s.sqlBuilder.table = tableName
 	return &TableBuilder{sqlBuilder: s.sqlBuilder}
 }
 
 func (s *SchemaBuilder) Alter(tableName string) Alteration {
-    s.sqlBuilder.sqlType = AlterTable
+	s.sqlBuilder.sqlType = AlterTable
 	s.sqlBuilder.table = tableName
 	return &AlterationBuilder{sqlBuilder: s.sqlBuilder}
 }
 
 func (t *TableBuilder) Id() Table {
+	var typename string
+	switch t.sqlBuilder.dialect {
+		case MySQL:
+			typename = "BIGINT"
+		case Postgres:
+			typename = "BIGSERIAL"
+		case SQLite:
+			typename = "INTEGER"
+	}
+
 	t.sqlBuilder.columns = append(t.sqlBuilder.columns, Column{
 		Name:       "id",
-		Type:       "BIGINT",
+		Type:       typename,
 		Nullable:   false,
 		PrimaryKey: true,
 		AutoInc:    true,
@@ -169,14 +184,14 @@ func (t *TableBuilder) Timestamps() Table {
 	t.sqlBuilder.columns = append(t.sqlBuilder.columns, Column{
 		Name:     "created_at",
 		Type:     "TIMESTAMP",
-		Default: &defaultTimestamp,
+		Default:  &defaultTimestamp,
 		Nullable: false,
 	})
 
 	t.sqlBuilder.columns = append(t.sqlBuilder.columns, Column{
 		Name:     "updated_at",
 		Type:     "TIMESTAMP",
-		Default: &defaultTimestamp,
+		Default:  &defaultTimestamp,
 		Nullable: false,
 	})
 
@@ -219,33 +234,33 @@ func (t *TableBuilder) Index(columns ...string) Table {
 	return t
 }
 
-func (t *TableBuilder) ForeignId(column string, table string, nullable bool) Reference {
+func (t *TableBuilder) ForeignId(column string, nullable bool) Reference {
 	t.sqlBuilder.columns = append(t.sqlBuilder.columns, Column{
-		Name:       column,
-		Type: "BIGINT",
-		Nullable:   nullable,
+		Name:     column,
+		Type:     "BIGINT",
+		Nullable: nullable,
 	})
 
-	return &ReferenceBuilder {
+	return &ReferenceBuilder{
 		sqlBuilder: t.sqlBuilder,
-		column: column,
-		table: table,
+		column:     column,
 	}
 }
 
 func (r *ReferenceBuilder) Refenreces(column string) Reference {
 	r.sqlBuilder.references = append(r.sqlBuilder.references, References{
-		Column:     r.column,
-		RefTable:   r.table,
-		RefColumn:  column,
+		Column:    r.column,
+		RefColumn: column,
 	})
 
 	return r
 }
 
-func (r *ReferenceBuilder) On(table string) Reference {
-	r.table = table
-	return r
+func (r *ReferenceBuilder) On(table string) Table {
+	r.sqlBuilder.references[len(r.sqlBuilder.references)-1].RefTable = table
+	return &TableBuilder{
+		sqlBuilder: r.sqlBuilder,
+	}
 }
 
 func (r *ReferenceBuilder) OnDelete(action string) Reference {
@@ -334,14 +349,14 @@ func (a *AlterationBuilder) Timestamps() Alteration {
 	a.sqlBuilder.columns = append(a.sqlBuilder.columns, Column{
 		Name:     "created_at",
 		Type:     "TIMESTAMP",
-		Default: &defaultTimestamp,
+		Default:  &defaultTimestamp,
 		Nullable: false,
 	})
 
 	a.sqlBuilder.columns = append(a.sqlBuilder.columns, Column{
 		Name:     "updated_at",
 		Type:     "TIMESTAMP",
-		Default: &defaultTimestamp,
+		Default:  &defaultTimestamp,
 		Nullable: false,
 	})
 
@@ -384,17 +399,16 @@ func (a *AlterationBuilder) Index(columns ...string) Alteration {
 	return a
 }
 
-func (a *AlterationBuilder) ForeignId(column string, table string, nullable bool) Reference {
+func (a *AlterationBuilder) ForeignId(column string, nullable bool) Reference {
 	a.sqlBuilder.columns = append(a.sqlBuilder.columns, Column{
-		Name:       column,
-		Type: "BIGINT",
-		Nullable:   nullable,
+		Name:     column,
+		Type:     "BIGINT",
+		Nullable: nullable,
 	})
 
-	return &ReferenceBuilder {
+	return &ReferenceBuilder{
 		sqlBuilder: a.sqlBuilder,
-		column: column,
-		table: table,
+		column:     column,
 	}
 }
 
@@ -406,8 +420,8 @@ func (a *AlterationBuilder) DropColumn(columns ...string) Alteration {
 
 func (a *AlterationBuilder) ModifyColumn(column string, columnType string, nullable bool) Alteration {
 	a.sqlBuilder.modifyColumns = append(a.sqlBuilder.modifyColumns, Column{
-		Name: column,
-		Type: columnType,
+		Name:     column,
+		Type:     columnType,
 		Nullable: nullable,
 	})
 
@@ -421,10 +435,6 @@ func (a *AlterationBuilder) RenameColumn(column string, newName string) Alterati
 	})
 
 	return a
-}
-
-func (r *ReferenceBuilder) Build() string {
-	return r.sqlBuilder.Build()
 }
 
 func (t *TableBuilder) Build() string {

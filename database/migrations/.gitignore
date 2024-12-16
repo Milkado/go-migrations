@@ -1,0 +1,3 @@
+*.go
+!*create-users-table.go
+!*create-password-reset-table.go

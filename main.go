@@ -59,16 +59,7 @@ func errorC() {
 }
 
 func dbConnect() *sql.DB {
-	config := config.DBConfig{
-		Driver:   "mysql",
-		Host:     "localhost",
-		Port:     "3306",
-		User:     "root",
-		Password: "pass",
-		DBName:   "go_migrations",
-	}
-
-	db, err := database.NewConnectionWithMonitoring(&config)
+	db, err := database.NewConnectionWithMonitoring(&config.Config)
 	if err != nil {
 		fmt.Println(cmd.Red, err.Error())
 		return nil

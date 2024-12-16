@@ -2,7 +2,7 @@
 
 Building a database migration package with Go.
 
-Initial fase of the project, little to none implemented
+For study purposes only.
 
 ### Usage
 ```clone the repo
@@ -28,28 +28,25 @@ go build -o go-migrations
 
 ### Drawbacks
 - Every new migration created needs a new build (from using go files)
-    - Future mitigation: use a separate build to generate migration files
 
 ### TODO
-- [ ] Environment variables support
+- [X] Environment variables support
 - [X] Migration option using query builder
-- [ ] Change sqlgen to support multiple databases
+- [X] Change sqlgen to support multiple databases (postgres, mysql, sqlite)
 - [X] Add Drop and Alter sqlgen
 - [X] Migrate command
 - [ ] Alter migration
-- [ ] Rollback migration (just need testing)
+- [X] Rollback migrations
 - [ ] Seeding with type safety
 - [X] Refactor alterations to fucntion like references
 - [ ] Separate migrate command to a standalone build
 - [ ] Add option to use SQL files
 - [ ] Add tests
     - [X] Add tests for SQL generation
+        - [X] MySQL
+        - [X] Postgres
+        - [ ] SQLite
     - [X] Add tests for generating files
     - [ ] Add tests for scanning files
     - [ ] Add tests for getting pending migrations
     - [ ] Add tests for migrate and rollback
-
-
-
-### Final
-- Make a full blown db standalone package for go modules or change into ```"go-api-blueprint/boilerplate"``` future project
