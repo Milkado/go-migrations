@@ -11,9 +11,10 @@ import (
 )
 
 type templateData struct {
-	Timestamp string
-	Name      string
+	Timestamp  string
+	Name       string
 	ParsedName string
+	TableName  *string
 }
 
 func validateMigrationName(name string) error {
@@ -41,10 +42,24 @@ func GenerateMigrationFile(name string, tmplfile string) {
 
 	timestamp := time.Now().Format("20060102150405") // Generates a timestamp YYYYMMDDHHMMSS
 	parsedname := strings.ReplaceAll(name, "-", "")
+	var tablename string
+	if strings.HasPrefix(name, "create") {
+		tablename = strings.ReplaceAll(name, "create", "")
+		if strings.HasSuffix(tablename, "table") {
+			tablename = strings.ReplaceAll(tablename, "table", "")
+		}
+		//Remove first and last hyphens
+		tablename = strings.Trim(tablename, "-")
+		//Replace hyphhens with underscores
+		if strings.Contains(tablename, "-") {
+			tablename = strings.ReplaceAll(tablename, "-", "_")
+		}
+	}
 	data := templateData{
-		Timestamp: timestamp,
-		Name:      name,
+		Timestamp:  timestamp,
+		Name:       name,
 		ParsedName: parsedname,
+		TableName:  &tablename,
 	}
 
 	//create template
@@ -57,7 +72,7 @@ func GenerateMigrationFile(name string, tmplfile string) {
 
 	//check if folder migrations exists
 	if _, err := os.Stat("database/migrations"); os.IsNotExist(err) {
-		os.Mkdir("database/migrations", os.ModePerm)
+		os.Mkdir("database/migrations", 0600)
 	}
 
 	// Execute the template
@@ -72,7 +87,7 @@ func GenerateMigrationFile(name string, tmplfile string) {
 	filename := "database/migrations/" + timestamp + "-" + name + ".go"
 
 	//write file from buffer
-	err = os.WriteFile(filename, bytes.Bytes(), 0644)
+	err = os.WriteFile(filename, bytes.Bytes(), 0600)
 	if err != nil {
 		fmt.Println(Red, "Error writing file, error:")
 		fmt.Println(err.Error() + Reset)

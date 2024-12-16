@@ -2,11 +2,15 @@ package schema
 
 import (
 	"fmt"
+	"log"
 	"strings"
+
+	"github.com/Milkado/go-migrations/cmd"
 )
 
 type (
 	SQLType    string
+	Dialect    string
 	SQLBuilder struct {
 		sqlType       SQLType
 		table         string
@@ -16,6 +20,7 @@ type (
 		renameColumns []RenameColumn
 		indexes       []Index
 		references    []References
+		dialect       Dialect
 	}
 
 	Column struct {
@@ -49,9 +54,12 @@ type (
 )
 
 const (
-	CreateTable = "CREATE TABLE"
-	DropTable   = "DROP TABLE"
-	AlterTable  = "ALTER TABLE"
+	CreateTable         = "CREATE TABLE"
+	DropTable           = "DROP TABLE"
+	AlterTable          = "ALTER TABLE"
+	MySQL       Dialect = "mysql"
+	Postgres    Dialect = "postgres"
+	SQLite      Dialect = "sqlite"
 )
 
 func (b *SQLBuilder) Build() string {
@@ -86,7 +94,7 @@ func (b *SQLBuilder) buildCreateTable() string {
 		}
 
 		//Add constraints
-		if !col.Nullable {
+		if !col.Nullable && col.Name != "id" {
 			def += " NOT NULL"
 		}
 
@@ -94,8 +102,16 @@ func (b *SQLBuilder) buildCreateTable() string {
 			def += fmt.Sprintf(" DEFAULT %s", *col.Default)
 		}
 
+		log.Printf(cmd.Blue+"DEBUG: dialect: %s"+cmd.Reset, b.dialect)
 		if col.AutoInc {
-			def += " AUTO_INCREMENT"
+			switch b.dialect {
+			case MySQL:
+				def += " AUTO_INCREMENT"
+			case Postgres:
+				def += ""
+			case SQLite:
+				def += " AUTOINCREMENT"
+			}
 		}
 
 		if col.PrimaryKey {
@@ -175,10 +191,20 @@ func (b *SQLBuilder) buildAlterTable() string {
 
 	// Add fk constraints
 	for _, ref := range b.references {
-		definitions = append(definitions,
-			fmt.Sprintf("ADD CONSTRAINT FOREIGN KEY (%s) REFERENCES %s (%s)",
-				ref.Column, ref.RefTable, ref.RefColumn),
-		)
+		constraintname := ref.Column + "_" + ref.RefTable + "_fk"
+		def := fmt.Sprintf("ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s (%s)",
+			constraintname, ref.Column, ref.RefTable, ref.RefColumn)
+
+		//Add on delete
+		if ref.OnDelete != "" {
+			def += fmt.Sprintf(" ON DELETE %s", ref.OnDelete)
+		}
+		//Add on update
+		if ref.OnUpdate != "" {
+			def += fmt.Sprintf(" ON UPDATE %s", ref.OnUpdate)
+		}
+
+		definitions = append(definitions, def)
 	}
 
 	//Add renames
@@ -190,21 +216,18 @@ func (b *SQLBuilder) buildAlterTable() string {
 
 	//Add modifications
 	for _, col := range b.modifyColumns {
-		definitions = append(definitions,
-			fmt.Sprintf("MODIFY COLUMN %s %s", col.Name, col.Type),
-		)
+		def := fmt.Sprintf("MODIFY COLUMN %s %s", col.Name, col.Type)
 
 		if col.Length > 0 {
-			definitions = append(definitions,
-				fmt.Sprintf("(%d)", col.Length),
-			)
+			def += fmt.Sprintf("(%d)", col.Length)
+
 		}
 
 		if !col.Nullable {
-			definitions = append(definitions,
-				" NOT NULL",
-			)
+			def += " NOT NULL"
 		}
+
+		definitions = append(definitions, def)
 	}
 
 	//Add uniques and indexes
@@ -229,7 +252,12 @@ func (b *SQLBuilder) buildAlterTable() string {
 		)
 	}
 
-	sql.WriteString(strings.Join(definitions, "\n"))
+	if len(definitions) > 1 {
+		sql.WriteString(strings.Join(definitions, ",\n"))
+		return sql.String()
+	}
+
+	sql.WriteString(strings.Join(definitions, ",\n"))
 
 	return sql.String()
 }

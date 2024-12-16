@@ -26,7 +26,7 @@ func ScanMigrationFiles(directory string) ([]MigrationFile, error) {
 	}
 
 	for _, file := range files {
-		//Skip non .go files
+		//Skip non .go and test files
 		if file.IsDir() || !strings.HasSuffix(file.Name(), ".go") || strings.HasSuffix(file.Name(), "_test.go") {
 			continue
 		}

@@ -2,6 +2,8 @@ name: CI
 on:
   pull_request:
     branches: [ ci ]
+  push:
+    branches: [ ci ]
 
 jobs:
   continuous-integration:
@@ -15,8 +17,16 @@ jobs:
           go-version: 1.23.1
       - name: Get dependencies
         run: go mod tidy
+      - name: Configure dotenv
+        run: | #start with mysql
+          touch .env
+          echo "DB_DRIVER=mysql" >> .env
+          echo "DB_HOST=127.0.0.1" >> .env
+          echo "DB_PORT=3306" >> .env
+          echo "DB_USER=root" >> .env
+          echo "DB_PASS=root" >> .env
+          echo "DB_NAME=go_migrations" >> .env 
       - name: Run tests
         run: |
-          go test -v ./tests/builder/sqlgen_test.go
-          go test -v ./tests/cmd/create-migration_test.go
+          go test -v ./tests/...
 
