@@ -2,10 +2,7 @@ package schema
 
 import (
 	"fmt"
-	"log"
 	"strings"
-
-	"github.com/Milkado/go-migrations/cmd"
 )
 
 type (
@@ -102,7 +99,6 @@ func (b *SQLBuilder) buildCreateTable() string {
 			def += fmt.Sprintf(" DEFAULT %s", *col.Default)
 		}
 
-		log.Printf(cmd.Blue+"DEBUG: dialect: %s"+cmd.Reset, b.dialect)
 		if col.AutoInc {
 			switch b.dialect {
 			case MySQL:

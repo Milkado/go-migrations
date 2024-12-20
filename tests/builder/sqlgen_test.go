@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Milkado/go-migrations/builder/query"
 	"github.com/Milkado/go-migrations/builder/schema"
 	"github.com/Milkado/go-migrations/cmd"
 	"github.com/spf13/viper"
@@ -237,6 +238,130 @@ func TestSQLGenerationPostgres(t *testing.T) {
 			},
 			expected: `ALTER TABLE users MODIFY COLUMN active BOOLEAN NOT NULL`,
 		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.builder()
+			// Normalize spaces and new lines
+			got = normalizeSpaces(got)
+			expected := normalizeSpaces(tt.expected)
+
+			if got != expected {
+				t.Errorf(cmd.Red+"\nwant: %s\ngot: %s\n"+cmd.Reset, expected, got)
+				return
+			}
+		})
+	}
+}
+
+func TestQueryGeneratorMysql(t *testing.T) {
+	originalDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("error getting current directory: %v", err)
+	}
+	defer os.Chdir(originalDir) // Restore original directory when done
+
+	// Change to project root
+	projectRoot := filepath.Dir(filepath.Dir(originalDir))
+	if err := os.Chdir(projectRoot); err != nil {
+		t.Fatalf("error changing to project root: %v", err)
+	}
+
+	tests := []struct {
+		name     string
+		builder  func() string
+		expected string
+	}{
+		{
+			name: "Insert into users one user",
+			builder: func() string {
+
+				return query.DB().Table("users").Insert(
+					[]query.Row{
+						{
+							{
+								Column: "name",
+								Value:  "John",
+							},
+							{
+								Column: "age",
+								Value:  "30",
+								Type:   "int",
+							},
+							{
+								Column: "active",
+								Value:  "true",
+								Type:   "bool",
+							},
+						},
+					},
+				).Build()
+			},
+			expected: "INSERT INTO users (name, age, active) VALUES ('John', 30, 1)",
+		},
+		{
+			name: "Update users",
+			builder: func() string {
+				return query.DB().Table("users").Update(
+					[]query.Values{
+						{
+							Column: "name",
+							Value:  "John",
+						},
+						{
+							Column: "age",
+							Value:  "30",
+							Type:   "int",
+						},
+						{
+							Column: "active",
+							Value:  "true",
+							Type:   "bool",
+						},
+					},
+				).Where("id", "1").Build()
+			},
+			expected: "UPDATE users SET name = 'John', age = 30, active = 1 WHERE id = 1",
+		},
+		{
+			name: "Insert two users",
+			builder: func() string {
+				return query.DB().Table("users").
+					Insert([]query.Row{
+						{
+							{
+								Column: "name",
+								Value:  "John",
+							},
+							{
+								Column: "age",
+								Value:  "30",
+								Type:   "int",
+							},
+						},
+						{
+							{
+								Column: "name",
+								Value:  "Jane",
+							},
+							{
+								Column: "age",
+								Value:  "40",
+								Type:   "int",
+							},
+						},
+					}).Build()
+		},
+			expected: "INSERT INTO users (name, age) VALUES ('John', 30), ('Jane', 40)",
+		},
+        {
+            name: "Delete where id 1",
+            builder: func() string {
+                return query.DB().Table("users").Delete().Where("id", "1").Build()
+            },
+            expected: "DELETE FROM users WHERE id = 1",
+        },
 	}
 
 	for _, tt := range tests {
